@@ -2,6 +2,10 @@ using ChatApp.Core.Enums;
 
 namespace ChatApp.Core.Entities;
 
+/// <summary>
+/// Represents a single stream session. A new Room is created each time
+/// a streamer goes live. Previous rooms are kept as history (VOD-style).
+/// </summary>
 public class Room
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -21,4 +25,8 @@ public class Room
     public ICollection<RoomParticipant> Participants { get; set; } = [];
 
     public bool IsLive => Status == RoomStatus.Live;
+
+    public TimeSpan? Duration => StartedAt.HasValue
+        ? (EndedAt ?? DateTime.UtcNow) - StartedAt.Value
+        : null;
 }

@@ -1,8 +1,8 @@
 namespace ChatApp.Core.Entities;
 
 /// <summary>
-/// Tracks active participants in a room (joined but not yet left).
-/// Used to show viewer counts and manage SignalR group membership.
+/// Tracks who is currently watching a live room.
+/// Used for live viewer counts and presence.
 /// </summary>
 public class RoomParticipant
 {

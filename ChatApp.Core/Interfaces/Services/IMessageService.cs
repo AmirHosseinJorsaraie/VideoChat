@@ -1,6 +1,6 @@
 using ChatApp.Core.DTOs;
 
-namespace ChatApp.Core.Interfaces;
+namespace ChatApp.Core.Interfaces.Services;
 
 public interface IMessageService
 {

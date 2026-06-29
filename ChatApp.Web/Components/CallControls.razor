@@ -1,0 +1,39 @@
+@inject VideoCallStateService VideoState
+@inject IJSRuntime JS
+
+<div class="call-controls">
+    <button class="ctrl-btn @(_micMuted ? "muted" : "")" @onclick="ToggleMic" title="Toggle mic">
+        @(_micMuted ? "🔇" : "🎤")
+    </button>
+
+    <button class="ctrl-btn @(_camOff ? "muted" : "")" @onclick="ToggleCamera" title="Toggle camera">
+        @(_camOff ? "📵" : "📹")
+    </button>
+
+    <button class="ctrl-btn end-call" @onclick="EndCall" title="End call">
+        📵
+    </button>
+</div>
+
+@code {
+    private bool _micMuted;
+    private bool _camOff;
+
+    private async Task ToggleMic()
+    {
+        _micMuted = !_micMuted;
+        await JS.InvokeVoidAsync("webRTC.toggleMic", _micMuted);
+    }
+
+    private async Task ToggleCamera()
+    {
+        _camOff = !_camOff;
+        await JS.InvokeVoidAsync("webRTC.toggleCamera", _camOff);
+    }
+
+    private async Task EndCall()
+    {
+        if (VideoState.CurrentCall is not null)
+            await VideoState.EndCallAsync(VideoState.CurrentCall.Id);
+    }
+}

@@ -9,10 +9,16 @@ public record RoomDto(
     RoomStatus Status,
     Guid StreamerId,
     string StreamerUsername,
+    string StreamerDisplayName,
     int ViewerCount,
     DateTime CreatedAt,
-    DateTime? StartedAt
-);
+    DateTime? StartedAt,
+    DateTime? EndedAt
+)
+{
+    public bool IsLive => Status == RoomStatus.Live;
+};
+
 
 public record CreateRoomRequest(
     string Title,

@@ -1,0 +1,20 @@
+@inject VideoCallStateService VideoState
+
+<div class="call-notification">
+    <div class="call-notification-inner">
+        <p class="incoming-label">Incoming call</p>
+        <p class="caller-name">📹 @Call.CallerDisplayName</p>
+
+        <div class="call-actions">
+            <button class="btn-accept" @onclick="Accept">Accept</button>
+            <button class="btn-reject" @onclick="Reject">Decline</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public VideoCallDto Call { get; set; } = null!;
+
+    private async Task Accept() => await VideoState.AcceptCallAsync(Call.Id);
+    private async Task Reject() => await VideoState.RejectCallAsync(Call.Id);
+}

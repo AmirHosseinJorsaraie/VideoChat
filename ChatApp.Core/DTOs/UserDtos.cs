@@ -5,12 +5,15 @@ namespace ChatApp.Core.DTOs;
 public record UserDto(
     Guid Id,
     string Username,
+    string DisplayName,
     string Email,
-    UserRole Role
+    UserRole Role,
+    bool IsOnline
 );
 
 public record RegisterRequest(
     string Username,
+    string DisplayName,
     string Email,
     string Password,
     UserRole Role
@@ -23,5 +26,6 @@ public record LoginRequest(
 
 public record AuthResult(
     UserDto User,
-    string Token
+    bool Succeeded,
+    IEnumerable<string> Errors
 );

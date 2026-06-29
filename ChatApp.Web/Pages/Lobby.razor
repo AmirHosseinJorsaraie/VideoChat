@@ -1,0 +1,65 @@
+@page "/"
+@page "/lobby"
+@attribute [Authorize]
+@inject IRoomService RoomService
+@inject ChatStateService ChatState
+@inject NavigationManager Nav
+
+<PageTitle>Live Rooms</PageTitle>
+
+<div class="lobby">
+    <div class="lobby-header">
+        <h1>Live Now</h1>
+        <AuthorizeView Roles="Streamer">
+            <button class="btn-go-live" @onclick="GoToStreamerDashboard">+ Go Live</button>
+        </AuthorizeView>
+    </div>
+
+    @if (_loading)
+    {
+        <p class="loading">Loading rooms...</p>
+    }
+    else if (_rooms.Count == 0)
+    {
+        <p class="empty">No one is live right now. Check back soon.</p>
+    }
+    else
+    {
+        <div class="room-grid">
+            @foreach (var room in _rooms)
+            {
+                <div class="room-card" @onclick="() => JoinRoom(room)">
+                    <div class="room-card-header">
+                        <span class="live-badge">LIVE</span>
+                        <span class="viewer-count">👁 @room.ViewerCount</span>
+                    </div>
+                    <h3 class="room-title">@room.Title</h3>
+                    <p class="streamer-name">@room.StreamerDisplayName</p>
+                    @if (!string.IsNullOrEmpty(room.Description))
+                    {
+                        <p class="room-desc">@room.Description</p>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<RoomDto> _rooms = [];
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _rooms = (await RoomService.GetLiveRoomsAsync()).ToList();
+        _loading = false;
+    }
+
+    private async Task JoinRoom(RoomDto room)
+    {
+        await ChatState.JoinRoomAsync(room);
+        Nav.NavigateTo($"/room/{room.Id}");
+    }
+
+    private void GoToStreamerDashboard() => Nav.NavigateTo("/dashboard");
+}

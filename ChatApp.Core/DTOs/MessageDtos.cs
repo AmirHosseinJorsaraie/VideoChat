@@ -1,3 +1,5 @@
+using ChatApp.Core.Enums;
+
 namespace ChatApp.Core.DTOs;
 
 public record MessageDto(
@@ -5,6 +7,7 @@ public record MessageDto(
     string Content,
     Guid SenderId,
     string SenderUsername,
+    string SenderDisplayName,
     bool IsSenderStreamer,
     DateTime SentAt
 );

@@ -1,6 +1,6 @@
 using ChatApp.Core.Entities;
 
-namespace ChatApp.Core.Interfaces;
+namespace ChatApp.Core.Interfaces.Repositories;
 
 public interface IRoomRepository
 {
@@ -12,4 +12,5 @@ public interface IRoomRepository
     Task<int> GetParticipantCountAsync(Guid roomId, CancellationToken ct = default);
     Task AddParticipantAsync(RoomParticipant participant, CancellationToken ct = default);
     Task RemoveParticipantAsync(Guid roomId, Guid userId, CancellationToken ct = default);
+    Task<bool> IsParticipantAsync(Guid roomId, Guid userId, CancellationToken ct = default);
 }

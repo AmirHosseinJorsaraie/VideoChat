@@ -11,3 +11,12 @@ public class RoomNotLiveException(Guid roomId)
 
 public class RoomAlreadyLiveException(Guid roomId)
     : Exception($"Room '{roomId}' is already live.");
+
+public class CallAlreadyActiveException(Guid userId)
+    : Exception($"User '{userId}' already has an active call.");
+
+public class CallNotFoundException(Guid callId)
+    : Exception($"Call '{callId}' was not found or has already ended.");
+
+public class InvalidCallStateException(string message)
+    : Exception(message);

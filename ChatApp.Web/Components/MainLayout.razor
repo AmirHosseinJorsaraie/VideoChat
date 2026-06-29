@@ -1,0 +1,42 @@
+@inherits LayoutComponentBase
+@inject IAuthService AuthService
+@inject NavigationManager Nav
+
+<div class="app-shell">
+    <nav class="navbar">
+        <a class="nav-brand" href="/">ChatApp</a>
+
+        <div class="nav-links">
+            <a href="/">Lobby</a>
+
+            <AuthorizeView Roles="Streamer">
+                <a href="/dashboard">My Stream</a>
+            </AuthorizeView>
+        </div>
+
+        <div class="nav-user">
+            <AuthorizeView>
+                <Authorized>
+                    <span class="username">@context.User.Identity?.Name</span>
+                    <button class="btn-logout" @onclick="Logout">Sign out</button>
+                </Authorized>
+                <NotAuthorized>
+                    <a href="/login">Sign in</a>
+                    <a href="/register" class="btn-register">Register</a>
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        @Body
+    </main>
+</div>
+
+@code {
+    private async Task Logout()
+    {
+        await AuthService.LogoutAsync();
+        Nav.NavigateTo("/login", forceLoad: true);
+    }
+}

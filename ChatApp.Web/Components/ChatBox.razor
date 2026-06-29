@@ -1,0 +1,73 @@
+@inject ChatStateService ChatState
+@inject AuthenticationStateProvider AuthState
+@implements IDisposable
+
+<div class="chatbox">
+    <div class="messages" @ref="_messagesEl">
+        @foreach (var msg in ChatState.Messages)
+        {
+            <div class="message @(msg.SenderId == _currentUserId ? "own" : "") @(msg.IsSenderStreamer ? "streamer" : "")">
+                <span class="sender">
+                    @if (msg.IsSenderStreamer)
+                    {
+                        <span class="streamer-badge">🎙</span>
+                    }
+                    @msg.SenderDisplayName
+                </span>
+                <span class="content">@msg.Content</span>
+
+                @if (msg.SenderId == _currentUserId || _isStreamer)
+                {
+                    <button class="delete-btn" @onclick="() => DeleteMessage(msg.Id)">✕</button>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="message-input">
+        <input @bind="_input"
+               @bind:event="oninput"
+               @onkeydown="OnKeyDown"
+               placeholder="Say something..."
+               maxlength="500"
+               disabled="@(!ChatState.IsConnected)" />
+        <button @onclick="Send" disabled="@(string.IsNullOrWhiteSpace(_input))">Send</button>
+    </div>
+</div>
+
+@code {
+    private string _input = string.Empty;
+    private Guid _currentUserId;
+    private bool _isStreamer;
+    private ElementReference _messagesEl;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        var claim = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        _currentUserId = Guid.Parse(claim ?? Guid.Empty.ToString());
+        _isStreamer = auth.User.IsInRole("Streamer");
+
+        ChatState.OnStateChanged += Refresh;
+    }
+
+    private async Task Send()
+    {
+        if (string.IsNullOrWhiteSpace(_input)) return;
+        await ChatState.SendMessageAsync(_input.Trim());
+        _input = string.Empty;
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+            await Send();
+    }
+
+    private async Task DeleteMessage(Guid messageId) =>
+        await ChatState.DeleteMessageAsync(messageId);
+
+    private void Refresh() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => ChatState.OnStateChanged -= Refresh;
+}

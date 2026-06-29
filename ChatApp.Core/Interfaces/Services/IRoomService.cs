@@ -1,6 +1,6 @@
 using ChatApp.Core.DTOs;
 
-namespace ChatApp.Core.Interfaces;
+namespace ChatApp.Core.Interfaces.Services;
 
 public interface IRoomService
 {
@@ -9,6 +9,7 @@ public interface IRoomService
     Task EndStreamAsync(Guid roomId, Guid streamerId, CancellationToken ct = default);
     Task<RoomDto?> GetRoomAsync(Guid roomId, CancellationToken ct = default);
     Task<IReadOnlyList<RoomDto>> GetLiveRoomsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<RoomDto>> GetStreamerHistoryAsync(Guid streamerId, CancellationToken ct = default);
     Task JoinRoomAsync(Guid roomId, Guid userId, CancellationToken ct = default);
     Task LeaveRoomAsync(Guid roomId, Guid userId, CancellationToken ct = default);
 }

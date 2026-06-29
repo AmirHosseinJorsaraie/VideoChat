@@ -1,0 +1,115 @@
+@page "/register"
+@inject IAuthService AuthService
+@inject NavigationManager Nav
+
+<PageTitle>Create account</PageTitle>
+
+<div class="auth-page">
+    <div class="auth-card">
+        <h1>Create account</h1>
+
+        <div class="form-group">
+            <label>Display name</label>
+            <input @bind="_request.DisplayName" placeholder="How you appear in chat" />
+        </div>
+
+        <div class="form-group">
+            <label>Username</label>
+            <input @bind="_request.Username" placeholder="lowercase, no spaces" />
+        </div>
+
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" @bind="_request.Email" placeholder="you@example.com" />
+        </div>
+
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" @bind="_request.Password" placeholder="Min 8 characters" />
+        </div>
+
+        <div class="form-group">
+            <label>I want to</label>
+            <div class="role-selector">
+                <label class="role-option @(_request.Role == UserRole.Viewer ? "selected" : "")">
+                    <input type="radio" name="role" value="Viewer"
+                           @onchange="() => _request = _request with { Role = UserRole.Viewer }" />
+                    👁 Watch streams
+                </label>
+                <label class="role-option @(_request.Role == UserRole.Streamer ? "selected" : "")">
+                    <input type="radio" name="role" value="Streamer"
+                           @onchange="() => _request = _request with { Role = UserRole.Streamer }" />
+                    🎙 Stream & host rooms
+                </label>
+            </div>
+        </div>
+
+        @if (_errors.Any())
+        {
+            <ul class="error-list">
+                @foreach (var error in _errors)
+                {
+                    <li>@error</li>
+                }
+            </ul>
+        }
+
+        <button class="btn-primary" @onclick="RegisterMethod" disabled="@_loading">
+            @(_loading ? "Creating account..." : "Create account")
+        </button>
+
+        <p class="auth-link">Already have an account? <a href="/login">Sign in</a></p>
+    </div>
+</div>
+
+@code {
+    // Using a mutable class here since record mutation in forms is verbose
+    private RegisterFormModel _request = new();
+    private List<string> _errors = [];
+    private bool _loading;
+
+    private async Task RegisterMethod()
+    {
+        _errors = [];
+
+        if (string.IsNullOrWhiteSpace(_request.DisplayName) ||
+            string.IsNullOrWhiteSpace(_request.Username) ||
+            string.IsNullOrWhiteSpace(_request.Email) ||
+            string.IsNullOrWhiteSpace(_request.Password))
+        {
+            _errors = ["All fields are required."];
+            return;
+        }
+
+        _loading = true;
+
+        try
+        {
+            var result = await AuthService.RegisterAsync(new RegisterRequest(
+                _request.Username,
+                _request.DisplayName,
+                _request.Email,
+                _request.Password,
+                _request.Role
+            ));
+
+            if (result.Succeeded)
+                Nav.NavigateTo("/");
+            else
+                _errors = result.Errors.ToList();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private record RegisterFormModel
+    {
+        public string DisplayName { get; set; } = string.Empty;
+        public string Username { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public UserRole Role { get; set; } = UserRole.Viewer;
+    }
+}

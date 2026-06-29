@@ -1,0 +1,143 @@
+@page "/dashboard"
+@attribute [Authorize(Roles = "Streamer")]
+@inject IRoomService RoomService
+@inject ChatStateService ChatState
+@inject NavigationManager Nav
+
+<PageTitle>Streamer Dashboard</PageTitle>
+
+<div class="dashboard">
+    <h1>Your Stream</h1>
+
+    @if (_activeRoom is null)
+    {
+        <!-- Create a new stream session -->
+        <div class="create-stream-form">
+            <h2>Start a new stream</h2>
+
+            <label>Title</label>
+            <input @bind="_title" placeholder="What are you streaming today?" maxlength="200" />
+
+            <label>Description (optional)</label>
+            <textarea @bind="_description" placeholder="Tell viewers what this stream is about..." maxlength="1000" />
+
+            <button class="btn-go-live" @onclick="CreateAndGoLive" disabled="@_loading">
+                @(_loading ? "Starting..." : "🔴 Go Live")
+            </button>
+
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <p class="error">@_error</p>
+            }
+        </div>
+
+        <!-- Past streams -->
+        @if (_pastRooms.Count > 0)
+        {
+            <div class="past-streams">
+                <h2>Past streams</h2>
+                @foreach (var room in _pastRooms)
+                {
+                    <div class="past-stream-row">
+                        <span class="past-title">@room.Title</span>
+                        <span class="past-date">@room.StartedAt?.ToString("MMM d, yyyy")</span>
+                        <span class="past-status @room.Status.ToString().ToLower()">@room.Status</span>
+                    </div>
+                }
+            </div>
+        }
+    }
+    else
+    {
+        <!-- Active stream controls -->
+        <div class="active-stream">
+            <div class="stream-status">
+                <span class="live-indicator">🔴 LIVE</span>
+                <h2>@_activeRoom.Title</h2>
+                <span class="viewer-count">@ChatState.ViewerCount watching</span>
+            </div>
+
+            <ChatBox />
+
+            <button class="btn-end-stream" @onclick="EndStream">End Stream</button>
+        </div>
+    }
+</div>
+
+@code {
+    private RoomDto? _activeRoom;
+    private List<RoomDto> _pastRooms = [];
+    private string _title = string.Empty;
+    private string? _description;
+    private bool _loading;
+    private string? _error;
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
+    private Guid _streamerId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthStateTask is null) return;
+        var auth = await AuthStateTask;
+        var claim = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        _streamerId = Guid.Parse(claim ?? Guid.Empty.ToString());
+
+        var history = await RoomService.GetStreamerHistoryAsync(_streamerId);
+        _activeRoom = history.FirstOrDefault(r => r.IsLive);
+        _pastRooms = history.Where(r => !r.IsLive).ToList();
+
+        ChatState.OnStateChanged += Refresh;
+
+        if (_activeRoom is not null)
+        {
+            if (!ChatState.IsConnected)
+                await ChatState.ConnectAsync("/hubs/chat", string.Empty);
+            await ChatState.JoinRoomAsync(_activeRoom);
+        }
+    }
+
+    private async Task CreateAndGoLive()
+    {
+        if (string.IsNullOrWhiteSpace(_title))
+        {
+            _error = "Please enter a stream title.";
+            return;
+        }
+
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            var room = await RoomService.CreateRoomAsync(new CreateRoomRequest(_title, _description), _streamerId);
+            _activeRoom = await RoomService.StartStreamAsync(room.Id, _streamerId);
+
+            if (!ChatState.IsConnected)
+                await ChatState.ConnectAsync("/hubs/chat", string.Empty);
+
+            await ChatState.JoinRoomAsync(_activeRoom);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task EndStream()
+    {
+        if (_activeRoom is null) return;
+
+        await RoomService.EndStreamAsync(_activeRoom.Id, _streamerId);
+        await ChatState.LeaveRoomAsync();
+        _pastRooms.Insert(0, _activeRoom with { Status = Core.Enums.RoomStatus.Ended });
+        _activeRoom = null;
+    }
+
+    private void Refresh() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => ChatState.OnStateChanged -= Refresh;
+}

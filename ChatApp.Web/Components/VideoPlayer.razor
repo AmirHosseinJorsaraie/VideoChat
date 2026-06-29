@@ -1,0 +1,27 @@
+@inject VideoCallStateService VideoState
+@implements IDisposable
+
+<div class="video-overlay">
+    <div class="video-container">
+
+        <!-- Remote peer video (large) -->
+        <video id="remoteVideo" autoplay playsinline class="remote-video"></video>
+
+        <!-- Local preview (picture-in-picture) -->
+        <video id="localVideo" autoplay playsinline muted class="local-video"></video>
+
+        <!-- Call controls -->
+        <CallControls />
+    </div>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        VideoState.OnStateChanged += Refresh;
+    }
+
+    private void Refresh() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => VideoState.OnStateChanged -= Refresh;
+}

@@ -1,6 +1,6 @@
 using ChatApp.Core.Entities;
 
-namespace ChatApp.Core.Interfaces;
+namespace ChatApp.Core.Interfaces.Repositories;
 
 public interface IMessageRepository
 {

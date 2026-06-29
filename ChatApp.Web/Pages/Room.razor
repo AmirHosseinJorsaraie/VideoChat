@@ -1,0 +1,114 @@
+@page "/room/{RoomId:guid}"
+@attribute [Authorize]
+@implements IAsyncDisposable
+@inject IRoomService RoomService
+@inject ChatStateService ChatState
+@inject VideoCallStateService VideoState
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthState
+
+<PageTitle>@(_room?.Title ?? "Room")</PageTitle>
+
+@if (_room is null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="room-layout">
+
+        <!-- Stream area (left) -->
+        <div class="stream-area">
+            <div class="stream-header">
+                <h2>@_room.Title</h2>
+                <span class="streamer-tag">@_room.StreamerDisplayName</span>
+                <span class="viewer-count">👁 @ChatState.ViewerCount watching</span>
+            </div>
+
+            @if (!_room.IsLive)
+            {
+                <div class="stream-offline">Stream has ended.</div>
+            }
+            else
+            {
+                <!-- Video area placeholder; replaced by VideoPlayer component in a call -->
+                <div class="stream-placeholder">
+                    <p>Stream content goes here (HLS player or call view)</p>
+                </div>
+
+                <!-- Call button — only show if not already in a call -->
+                @if (!VideoState.IsInCall && _room.StreamerId != _currentUserId)
+                {
+                    <button class="btn-call" @onclick="CallStreamer">📹 Call Streamer</button>
+                }
+            }
+        </div>
+
+        <!-- Chat sidebar (right) -->
+        <div class="chat-sidebar">
+            <ChatBox />
+        </div>
+    </div>
+
+    <!-- Incoming call overlay -->
+    @if (VideoState.CurrentCall is { } incomingCall && incomingCall.CalleeId == _currentUserId)
+    {
+        <CallNotification Call="incomingCall" />
+    }
+
+    <!-- Active call overlay -->
+    @if (VideoState.IsInCall)
+    {
+        <VideoPlayer />
+    }
+}
+
+@code {
+    [Parameter] public Guid RoomId { get; set; }
+
+    private RoomDto? _room;
+    private Guid _currentUserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthState.GetAuthenticationStateAsync();
+        var userIdClaim = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        _currentUserId = Guid.Parse(userIdClaim ?? Guid.Empty.ToString());
+
+        _room = await RoomService.GetRoomAsync(RoomId);
+        if (_room is null) { Nav.NavigateTo("/"); return; }
+
+        // Subscribe to state changes
+        ChatState.OnStateChanged += Refresh;
+        ChatState.OnStreamEnded += OnStreamEnded;
+
+        // Connect to hubs if not already connected
+        if (!ChatState.IsConnected)
+            await ChatState.ConnectAsync("/hubs/chat", string.Empty);
+
+        await ChatState.JoinRoomAsync(_room);
+        await VideoState.ConnectAsync("/hubs/video");
+    }
+
+    private void Refresh() => InvokeAsync(StateHasChanged);
+
+    private void OnStreamEnded()
+    {
+        if (_room is not null)
+            _room = _room with { Status = Core.Enums.RoomStatus.Ended };
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task CallStreamer()
+    {
+        if (_room is null) return;
+        await VideoState.InitiateCallAsync(_room.StreamerId, _room.Id);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        ChatState.OnStateChanged -= Refresh;
+        ChatState.OnStreamEnded -= OnStreamEnded;
+        await ChatState.LeaveRoomAsync();
+    }
+}
