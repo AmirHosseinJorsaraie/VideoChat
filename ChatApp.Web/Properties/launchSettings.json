@@ -3,10 +3,26 @@
     "ChatApp.Web": {
       "commandName": "Project",
       "launchBrowser": true,
+      "dotnetRunMessages": true,
+      "applicationUrl": "https://localhost:55229",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
-      },
-      "applicationUrl": "https://localhost:55229;http://localhost:55230"
+      }
+    },
+    "IIS Express": {
+      "commandName": "IISExpress",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  },
+  "iisSettings": {
+    "windowsAuthentication": false,
+    "anonymousAuthentication": true,
+    "iisExpress": {
+      "applicationUrl": "http://localhost:64020/",
+      "sslPort": 44346
     }
   }
 }
