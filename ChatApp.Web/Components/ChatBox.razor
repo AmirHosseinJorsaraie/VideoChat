@@ -7,19 +7,22 @@
         @foreach (var msg in ChatState.Messages)
         {
             <div class="message @(msg.SenderId == _currentUserId ? "own" : "") @(msg.IsSenderStreamer ? "streamer" : "")">
-                <span class="sender">
-                    @if (msg.IsSenderStreamer)
-                    {
-                        <span class="streamer-badge">🎙</span>
-                    }
-                    @msg.SenderDisplayName
-                </span>
-                <span class="content">@msg.Content</span>
+                <div class="message-meta">
+                    <span class="sender">
+                        @if (msg.IsSenderStreamer)
+                        {
+                            <span class="streamer-badge">HOST</span>
+                        }
+                        @msg.SenderDisplayName
+                    </span>
 
-                @if (msg.SenderId == _currentUserId || _isStreamer)
-                {
-                    <button class="delete-btn" @onclick="() => DeleteMessage(msg.Id)">✕</button>
-                }
+                    @if (msg.SenderId == _currentUserId || _isStreamer)
+                    {
+                        <button class="delete-btn" @onclick="() => DeleteMessage(msg.Id)" title="Delete message">x</button>
+                    }
+                </div>
+
+                <div class="content">@msg.Content</div>
             </div>
         }
     </div>
