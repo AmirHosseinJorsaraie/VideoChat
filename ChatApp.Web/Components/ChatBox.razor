@@ -28,10 +28,10 @@
         <input @bind="_input"
                @bind:event="oninput"
                @onkeydown="OnKeyDown"
-               placeholder="Say something..."
+               placeholder="@(ChatState.CanSendMessages ? "Say something..." : "Chat is closed")"
                maxlength="500"
-               disabled="@(!ChatState.IsConnected)" />
-        <button @onclick="Send" disabled="@(string.IsNullOrWhiteSpace(_input))">Send</button>
+               disabled="@(!ChatState.CanSendMessages)" />
+        <button @onclick="Send" disabled="@(!ChatState.CanSendMessages || string.IsNullOrWhiteSpace(_input))">Send</button>
     </div>
 </div>
 
@@ -53,7 +53,7 @@
 
     private async Task Send()
     {
-        if (string.IsNullOrWhiteSpace(_input)) return;
+        if (!ChatState.CanSendMessages || string.IsNullOrWhiteSpace(_input)) return;
         await ChatState.SendMessageAsync(_input.Trim());
         _input = string.Empty;
     }

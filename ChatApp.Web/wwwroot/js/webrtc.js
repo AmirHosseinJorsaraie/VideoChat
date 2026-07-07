@@ -48,7 +48,30 @@ window.webRTC = (() => {
 
     async function getLocalStream() {
         if (localStream) return localStream;
-        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+
+        if (!navigator.mediaDevices?.getUserMedia) {
+            throw new Error('Media devices are not available. Use HTTPS or localhost and a supported browser.');
+        }
+
+        const constraintAttempts = [
+            { video: true, audio: true },
+            { video: false, audio: true },
+            { video: true, audio: false }
+        ];
+
+        let lastError = null;
+        for (const constraints of constraintAttempts) {
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia(constraints);
+                break;
+            } catch (error) {
+                lastError = error;
+            }
+        }
+
+        if (!localStream) {
+            throw new Error('No camera or microphone was found, or permission was denied.');
+        }
 
         const localVideo = document.getElementById('localVideo');
         if (localVideo) localVideo.srcObject = localStream;
@@ -123,6 +146,20 @@ window.webRTC = (() => {
             const remoteVideo = document.getElementById('remoteVideo');
             if (localVideo) localVideo.srcObject = null;
             if (remoteVideo) remoteVideo.srcObject = null;
+        },
+
+        toggleMic: (muted) => {
+            if (!localStream) return;
+            localStream.getAudioTracks().forEach(track => {
+                track.enabled = !muted;
+            });
+        },
+
+        toggleCamera: (off) => {
+            if (!localStream) return;
+            localStream.getVideoTracks().forEach(track => {
+                track.enabled = !off;
+            });
         }
     };
 })();

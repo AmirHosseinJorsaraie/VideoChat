@@ -1,5 +1,7 @@
 using ChatApp.Application.Services;
+using ChatApp.Core.DTOs;
 using ChatApp.Core.Entities;
+using ChatApp.Core.Enums;
 using ChatApp.Core.Interfaces.Repositories;
 using ChatApp.Core.Interfaces.Services;
 using ChatApp.Infrastructure.Identity;
@@ -8,6 +10,7 @@ using ChatApp.Infrastructure.Persistence.Repositories;
 using ChatApp.Infrastructure.SignalR;
 using ChatApp.Web.Services;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -103,4 +106,64 @@ app.MapHub<VideoHub>("/hubs/video");
 app.MapRazorComponents<ChatApp.Web.Components.App>()
    .AddInteractiveServerRenderMode();
 
+// ── Auth Http Request ─────────────────────────────────────────────────────────
+
+app.MapPost("/auth/login", async (
+    HttpContext context,
+    SignInManager<AppUser> signInManager,
+    UserManager<AppUser> userManager,
+    [FromForm] string email,
+    [FromForm] string password,
+    [FromForm] string? returnUrl) =>
+{
+    var user = await userManager.FindByEmailAsync(email.ToLower().Trim());
+    if (user is null)
+        return Results.Redirect("/login?error=Invalid email or password");
+
+    var result = await signInManager.PasswordSignInAsync(user, password, isPersistent: true, lockoutOnFailure: false);
+
+    if (!result.Succeeded)
+        return Results.Redirect("/login?error=Invalid email or password");
+
+    if (returnUrl == "") returnUrl = "/";
+
+    return Results.Redirect(returnUrl ?? "/");
+})
+.DisableAntiforgery(); // or properly configure antiforgery for forms
+
+app.MapPost("/auth/logout", async (SignInManager<AppUser> signInManager) =>
+{
+    await signInManager.SignOutAsync();
+    return Results.Redirect("/login");
+});
+
+app.MapPost("/auth/register", async (
+    HttpContext context,
+    IAuthService authService,
+    [FromForm] string username,
+    [FromForm] string displayName,
+    [FromForm] string email,
+    [FromForm] string password,
+    [FromForm] string role) =>
+{
+    if (!Enum.TryParse<UserRole>(role, ignoreCase: true, out var parsedRole))
+        return Results.Redirect("/register?error=Invalid role");
+
+    var result = await authService.RegisterAsync(new RegisterRequest(
+        username,
+        displayName,
+        email,
+        password,
+        parsedRole
+    ));
+
+    if (!result.Succeeded)
+    {
+        var errorMsg = Uri.EscapeDataString(string.Join("; ", result.Errors));
+        return Results.Redirect($"/register?error={errorMsg}");
+    }
+
+    return Results.Redirect("/");
+})
+.DisableAntiforgery();
 app.Run();

@@ -59,7 +59,7 @@ public class VideoHub(IVideoCallService callService) : Hub
 
     // ── Call lifecycle ────────────────────────────────────────────────────────
 
-    public async Task InitiateCall(Guid calleeId, Guid? roomId)
+    public async Task<VideoCallDto> InitiateCall(Guid calleeId, Guid? roomId)
     {
         var callerId = GetUserId();
         var request = new InitiateCallRequest(calleeId, roomId);
@@ -69,9 +69,11 @@ public class VideoHub(IVideoCallService callService) : Hub
         var calleeConnectionId = GetConnectionId(calleeId);
         if (calleeConnectionId is not null)
             await Clients.Client(calleeConnectionId).SendAsync("IncomingCall", call);
+
+        return call;
     }
 
-    public async Task AcceptCall(Guid callId)
+    public async Task<VideoCallDto> AcceptCall(Guid callId)
     {
         var calleeId = GetUserId();
         var call = await callService.AcceptCallAsync(callId, calleeId);
@@ -80,6 +82,8 @@ public class VideoHub(IVideoCallService callService) : Hub
         var callerConnectionId = GetConnectionId(call.CallerId);
         if (callerConnectionId is not null)
             await Clients.Client(callerConnectionId).SendAsync("CallAccepted", callId);
+
+        return call;
     }
 
     public async Task RejectCall(Guid callId)

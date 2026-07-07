@@ -1,7 +1,4 @@
 @page "/login"
-@inject IAuthService AuthService
-@inject NavigationManager Nav
-@rendermode RenderMode.InteractiveServer
 
 <PageTitle>Sign in</PageTitle>
 
@@ -9,65 +6,87 @@
     <div class="auth-card">
         <h1>Sign in</h1>
 
-        <div class="form-group">
-            <label>Email</label>
-            <input type="email" @bind="_email" placeholder="you@example.com" />
-        </div>
+        <form method="post" action="/auth/login" onsubmit="return signInLoading(this)">
+            <input type="hidden" name="returnUrl" value="@ReturnUrl" />
 
-        <div class="form-group">
-            <label>Password</label>
-            <input type="password" @bind="_password"
-                    @onkeydown="OnKeyDown" 
-                   placeholder="Your password" />
-        </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" name="email" placeholder="you@example.com" />
+            </div>
 
-        @if (!string.IsNullOrEmpty(_error))
-        {
-            <p class="error">@_error</p>
-        }
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" name="password" placeholder="Your password" />
+            </div>
 
-        <button class="btn-primary" @onclick="LoginMethod" disabled="@_loading">
-            @(_loading ? "Signing in..." : "Sign in")
-        </button>
+            @if (!string.IsNullOrEmpty(Error))
+            {
+                <p class="error">@Error</p>
+            }
+
+            <button type="submit" class="btn-primary" id="loginButton">
+                <span class="btn-content">
+                    <span class="btn-text">Sign in</span>
+
+                    <span class="loading-content d-none">
+                        <span class="spinner"></span>
+                        <span>Signing in...</span>
+                    </span>
+                </span>
+            </button>
+        </form>
 
         <p class="auth-link">No account? <a href="/register">Create one</a></p>
     </div>
 </div>
 
+<style>
+    .btn-primary {
+        width: 100%;
+        height: 44px;
+        margin-top: 15px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .btn-content {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .loading-content {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255,255,255,.35);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin .8s linear infinite;
+    }
+
+    @@keyframes spin {
+        to
+
+    {
+        transform: rotate(360deg);
+    }
+
+    }
+
+    button:disabled {
+        opacity: .7;
+        cursor: not-allowed;
+    }
+</style>
+
 @code {
-    private string _email = string.Empty;
-    private string _password = string.Empty;
-    private string? _error;
-    private bool _loading;
-
-    private async Task LoginMethod()
-    {
-        if (string.IsNullOrWhiteSpace(_email) || string.IsNullOrWhiteSpace(_password))
-        {
-            _error = "Email and password are required.";
-            return;
-        }
-
-        _loading = true;
-        _error = null;
-
-        try
-        {
-            var result = await AuthService.LoginAsync(new LoginRequest(_email, _password));
-
-            if (result.Succeeded)
-                Nav.NavigateTo("/", forceLoad: true); // force reload so auth state refreshes
-            else
-                _error = result.Errors.FirstOrDefault() ?? "Sign in failed.";
-        }
-        finally
-        {
-            _loading = false;
-        }
-    }
-
-    private async Task OnKeyDown(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter") await LoginMethod();
-    }
+    [SupplyParameterFromQuery] public string? Error { get; set; }
+    [SupplyParameterFromQuery] public string? ReturnUrl { get; set; }
 }

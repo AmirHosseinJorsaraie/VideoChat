@@ -18,7 +18,9 @@
             <AuthorizeView>
                 <Authorized>
                     <span class="username">@context.User.Identity?.Name</span>
-                    <button class="btn-logout" @onclick="Logout">Sign out</button>
+                    <form method="post" action="/auth/logout">
+                        <button type="submit" class="btn-logout">Sign out</button>
+                    </form>
                 </Authorized>
                 <NotAuthorized>
                     <a href="/login">Sign in</a>
@@ -33,10 +35,3 @@
     </main>
 </div>
 
-@code {
-    private async Task Logout()
-    {
-        await AuthService.LogoutAsync();
-        Nav.NavigateTo("/login", forceLoad: true);
-    }
-}

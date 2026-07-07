@@ -2,7 +2,9 @@
 @attribute [Authorize(Roles = "Streamer")]
 @inject IRoomService RoomService
 @inject ChatStateService ChatState
+@inject VideoCallStateService VideoState
 @inject NavigationManager Nav
+@implements IDisposable
 
 <PageTitle>Streamer Dashboard</PageTitle>
 
@@ -64,6 +66,16 @@
     }
 </div>
 
+@if (VideoState.CurrentCall is { Status: Core.Enums.CallStatus.Pending } incomingCall && incomingCall.CalleeId == _streamerId)
+{
+    <CallNotification Call="incomingCall" />
+}
+
+@if (VideoState.IsInCall)
+{
+    <VideoPlayer />
+}
+
 @code {
     private RoomDto? _activeRoom;
     private List<RoomDto> _pastRooms = [];
@@ -87,6 +99,9 @@
         _pastRooms = history.Where(r => !r.IsLive).ToList();
 
         ChatState.OnStateChanged += Refresh;
+        VideoState.OnStateChanged += Refresh;
+
+        await VideoState.ConnectAsync("/hubs/video");
 
         if (_activeRoom is not null)
         {
@@ -116,6 +131,8 @@
                 await ChatState.ConnectAsync("/hubs/chat", string.Empty);
 
             await ChatState.JoinRoomAsync(_activeRoom);
+            await VideoState.ConnectAsync("/hubs/video");
+            Nav.NavigateTo($"/room/{_activeRoom.Id}");
         }
         catch (Exception ex)
         {
@@ -132,6 +149,7 @@
         if (_activeRoom is null) return;
 
         await RoomService.EndStreamAsync(_activeRoom.Id, _streamerId);
+        await ChatState.NotifyStreamEndedAsync(_activeRoom.Id);
         await ChatState.LeaveRoomAsync();
         _pastRooms.Insert(0, _activeRoom with { Status = Core.Enums.RoomStatus.Ended });
         _activeRoom = null;
@@ -139,5 +157,9 @@
 
     private void Refresh() => InvokeAsync(StateHasChanged);
 
-    public void Dispose() => ChatState.OnStateChanged -= Refresh;
+    public void Dispose()
+    {
+        ChatState.OnStateChanged -= Refresh;
+        VideoState.OnStateChanged -= Refresh;
+    }
 }

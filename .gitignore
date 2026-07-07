@@ -341,6 +341,11 @@ ASALocalRun/
 # MSBuild Binary and Structured Log
 *.binlog
 
+# Codex temporary build outputs
+.codex-build/
+.codex-obj/
+**/.codex-obj/
+
 # NVidia Nsight GPU debugger configuration file
 *.nvuser
 

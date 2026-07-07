@@ -16,13 +16,16 @@
 else
 {
     <div class="room-layout">
-
-        <!-- Stream area (left) -->
         <div class="stream-area">
             <div class="stream-header">
                 <h2>@_room.Title</h2>
                 <span class="streamer-tag">@_room.StreamerDisplayName</span>
-                <span class="viewer-count">👁 @ChatState.ViewerCount watching</span>
+                <span class="viewer-count">@ChatState.ViewerCount watching</span>
+
+                @if (_room.IsLive && _room.StreamerId == _currentUserId)
+                {
+                    <button class="btn-end-stream room-end-stream" @onclick="EndStream">End Stream</button>
+                }
             </div>
 
             @if (!_room.IsLive)
@@ -31,35 +34,32 @@ else
             }
             else
             {
-                <!-- Video area placeholder; replaced by VideoPlayer component in a call -->
                 <div class="stream-placeholder">
-                    <p>Stream content goes here (HLS player or call view)</p>
+                    @if (VideoState.CurrentCall is { Status: Core.Enums.CallStatus.Active })
+                    {
+                        <VideoPlayer />
+                    }
+                    else
+                    {
+                        <p>Stream content goes here (HLS player or call view)</p>
+                    }
                 </div>
 
-                <!-- Call button — only show if not already in a call -->
                 @if (!VideoState.IsInCall && _room.StreamerId != _currentUserId)
                 {
-                    <button class="btn-call" @onclick="CallStreamer">📹 Call Streamer</button>
+                    <button class="btn-call" @onclick="CallStreamer">Call Streamer</button>
                 }
             }
         </div>
 
-        <!-- Chat sidebar (right) -->
         <div class="chat-sidebar">
             <ChatBox />
         </div>
     </div>
 
-    <!-- Incoming call overlay -->
-    @if (VideoState.CurrentCall is { } incomingCall && incomingCall.CalleeId == _currentUserId)
+    @if (VideoState.CurrentCall is { Status: Core.Enums.CallStatus.Pending } incomingCall && incomingCall.CalleeId == _currentUserId)
     {
         <CallNotification Call="incomingCall" />
-    }
-
-    <!-- Active call overlay -->
-    @if (VideoState.IsInCall)
-    {
-        <VideoPlayer />
     }
 }
 
@@ -76,13 +76,16 @@ else
         _currentUserId = Guid.Parse(userIdClaim ?? Guid.Empty.ToString());
 
         _room = await RoomService.GetRoomAsync(RoomId);
-        if (_room is null) { Nav.NavigateTo("/"); return; }
+        if (_room is null)
+        {
+            Nav.NavigateTo("/");
+            return;
+        }
 
-        // Subscribe to state changes
         ChatState.OnStateChanged += Refresh;
         ChatState.OnStreamEnded += OnStreamEnded;
+        VideoState.OnStateChanged += Refresh;
 
-        // Connect to hubs if not already connected
         if (!ChatState.IsConnected)
             await ChatState.ConnectAsync("/hubs/chat", string.Empty);
 
@@ -105,10 +108,22 @@ else
         await VideoState.InitiateCallAsync(_room.StreamerId, _room.Id);
     }
 
+    private async Task EndStream()
+    {
+        if (_room is null || _room.StreamerId != _currentUserId) return;
+
+        await RoomService.EndStreamAsync(_room.Id, _currentUserId);
+        await ChatState.NotifyStreamEndedAsync(_room.Id);
+        await ChatState.LeaveRoomAsync();
+        _room = _room with { Status = Core.Enums.RoomStatus.Ended };
+        Nav.NavigateTo("/dashboard");
+    }
+
     public async ValueTask DisposeAsync()
     {
         ChatState.OnStateChanged -= Refresh;
         ChatState.OnStreamEnded -= OnStreamEnded;
+        VideoState.OnStateChanged -= Refresh;
         await ChatState.LeaveRoomAsync();
     }
 }

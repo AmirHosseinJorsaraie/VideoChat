@@ -1,3 +1,4 @@
+using ChatApp.Application.Resources;
 using ChatApp.Core.DTOs;
 using ChatApp.Core.Entities;
 using ChatApp.Core.Interfaces.Services;
@@ -21,6 +22,13 @@ public class AuthService(
             Role = request.Role
         };
 
+        //validation
+        var duplicateEmail = await userManager.FindByEmailAsync(request.Email);
+        if (duplicateEmail != null)
+        {
+            return new AuthResult(null!, false, [ErrorMessage.DUPLICATE_EMAIL_ERROR]);
+        }
+
         var result = await userManager.CreateAsync(user, request.Password);
 
         if (!result.Succeeded)
@@ -37,17 +45,24 @@ public class AuthService(
 
     public async Task<AuthResult> LoginAsync(LoginRequest request, CancellationToken ct = default)
     {
-        var user = await userManager.FindByEmailAsync(request.Email.ToLower().Trim());
-        if (user is null)
-            return new AuthResult(null!, false, ["Invalid email or password."]);
+        try
+        {
+            var user = await userManager.FindByEmailAsync(request.Email.ToLower().Trim());
+            if (user is null)
+                return new AuthResult(null!, false, ["Invalid email or password."]);
 
-        var result = await signInManager.PasswordSignInAsync(
-            user, request.Password, isPersistent: true, lockoutOnFailure: false);
+            var result = await signInManager.PasswordSignInAsync(
+                user, request.Password, isPersistent: true, lockoutOnFailure: false);
 
-        if (!result.Succeeded)
-            return new AuthResult(null!, false, ["Invalid email or password."]);
+            if (!result.Succeeded)
+                return new AuthResult(null!, false, ["Invalid email or password."]);
 
-        return new AuthResult(ToDto(user), true, []);
+            return new AuthResult(ToDto(user), true, []);
+        }
+        catch (Exception)
+        {
+            throw;
+        }
     }
 
     public async Task LogoutAsync() =>
